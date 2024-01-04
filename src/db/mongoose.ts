@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { ConnectOptions } from 'mongoose';
 import { DatabaseError } from '../errors/database-error';
 import { DatabaseEvents } from './database-events';
 import logger from '../utils/logger';
@@ -11,9 +11,10 @@ export class Database {
     if (Database.isValidConnection()) return;
 
     const dbUrl = Database.setUri();
+    const options = Database.buildOptions();
 
     try {
-      const connection = await mongoose.connect(dbUrl!);
+      const connection = await mongoose.connect(dbUrl, options);
       Database.instance = connection.connection;
 
       if (!Database.isValidConnection) {
@@ -84,5 +85,20 @@ export class Database {
       : process.env.MONGO_USER
         ? `mongodb://${process.env.MONGO_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGO_HOST}/${process.env.MONGO_DBNAME}`
         : `mongodb://${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_DBNAME}`;
+  }
+
+  private static buildOptions(): ConnectOptions {
+    const options: ConnectOptions = {
+      // useNewUrlParser: true,
+      // useCreateIndex: true,
+      // autoReconnect: true,
+      // keepAlive: true -- deprecated
+      connectTimeoutMS: 30000,
+      maxPoolSize: 5,
+    };
+
+    options.replicaSet = '';
+
+    return options;
   }
 }
