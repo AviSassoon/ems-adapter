@@ -76,7 +76,11 @@ export class KafkaConsumer {
         },
       });
     } catch (error) {
-      logger.error('Error: ', error);
+      logger.error('Error connect and subscribe consumer to topic ', error);
+      throw new KafkaConsumerError(
+        'Error connect and subscribe to topic',
+        error as Error,
+      );
     }
   }
 
