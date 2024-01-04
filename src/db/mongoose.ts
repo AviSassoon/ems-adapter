@@ -10,8 +10,7 @@ export class Database {
   public static async connect(): Promise<void> {
     if (Database.isValidConnection()) return;
 
-    const dbUrl = process.env.DB_URL;
-    Database.isUrlSet(dbUrl);
+    const dbUrl = Database.setUri();
 
     try {
       const connection = await mongoose.connect(dbUrl!);
@@ -79,10 +78,11 @@ export class Database {
     return !!Database.instance;
   }
 
-  private static isUrlSet(dbUrl: string | undefined) {
-    if (!dbUrl) {
-      logger.error('Database connection URL is not set.');
-      throw new DatabaseError('Database connection URL is not set.');
-    }
+  private static setUri() {
+    return process.env.MONGO_CONNECTION_STRING
+      ? process.env.MONGO_CONNECTION_STRING
+      : process.env.MONGO_USER
+        ? `mongodb://${process.env.MONGO_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGO_HOST}/${process.env.MONGO_DBNAME}`
+        : `mongodb://${process.env.MONGO_HOST}:${process.env.MONGO_PORT}/${process.env.MONGO_DBNAME}`;
   }
 }
