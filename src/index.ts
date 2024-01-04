@@ -8,9 +8,9 @@ import { errorHandlerMiddleware } from './middlewares/error-handler-middleware';
 import healthCheck from './routers/health-check.router';
 import { NotFoundError } from './errors/not-found-error';
 import { KafkaProducer } from './services/kafka/producer';
+import { KafkaConsumer } from './services/kafka/consumer';
 import { fillConfigurationCache } from './utils/app-initialization';
 import logger from './utils/logger';
-import { KafkaConsumer } from './services/kafka/consumer';
 
 let server: http.Server;
 
@@ -28,7 +28,7 @@ const startServer = async () => {
 
     const port = process.env.PORT || 3000;
     await Database.connect();
-    await KafkaProducer.getInstance().connect();
+    await KafkaProducer.start();
     await fillConfigurationCache();
 
     server = app.listen(port, () => {
@@ -41,7 +41,7 @@ const startServer = async () => {
 
 process
   .on('unhandledRejection', async (error: Error, promise) => {
-    await KafkaProducer.getInstance().disconnect();
+    await KafkaProducer.shutdown();
     await KafkaConsumer.getInstance().disconnect();
     await Database.disconnect();
 
@@ -49,7 +49,7 @@ process
     process.exit(1);
   })
   .on('uncaughtException', async (error) => {
-    await KafkaProducer.getInstance().disconnect();
+    await KafkaProducer.shutdown();
     await Database.disconnect();
 
     logger.error(error, 'Uncaught Exception thrown');
@@ -64,8 +64,7 @@ const gracefulShutdownHandler = (signal: string) => {
   setTimeout(async () => {
     logger.info('Shutting down application');
 
-    const producer = KafkaProducer.getInstance();
-    await producer.s();
+    await KafkaProducer.start();
     const consumer = KafkaConsumer.getInstance();
     await consumer.disconnect();
 

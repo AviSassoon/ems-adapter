@@ -13,12 +13,12 @@ import { KafkaProducerError } from '../../errors/kafka-producer-error';
 export class KafkaProducer {
   private static instance: Producer;
 
-  public static getInstance() {
-    if (!KafkaProducer.instance) {
-      KafkaProducer.instance = new Kafka(kafkaProducerConfig).producer();
-      KafkaProducer.setupEventHandlers();
-    }
-    return KafkaProducer.instance;
+  private constructor() {}
+
+  private static async initializeProducer() {
+    const kafka = new Kafka(kafkaProducerConfig);
+    KafkaProducer.instance = kafka.producer();
+    KafkaProducer.setupEventHandlers();
   }
 
   private static setupEventHandlers() {
@@ -36,7 +36,11 @@ export class KafkaProducer {
     );
   }
 
-  public async start(): Promise<void> {
+  public static async start(): Promise<void> {
+    if (!KafkaProducer.instance) {
+      await KafkaProducer.initializeProducer();
+    }
+
     try {
       await KafkaProducer.instance.connect();
     } catch (error) {
@@ -48,7 +52,11 @@ export class KafkaProducer {
     }
   }
 
-  public async shutdown(): Promise<void> {
+  public static async shutdown(): Promise<void> {
+    if (!KafkaProducer.instance) {
+      throw new KafkaProducerError('Producer is not initialized');
+    }
+
     try {
       await KafkaProducer.instance.disconnect();
     } catch (error) {
@@ -60,7 +68,11 @@ export class KafkaProducer {
     }
   }
 
-  public async send(messages: CustomMessageFormat[]): Promise<void> {
+  public static async send(messages: CustomMessageFormat[]): Promise<void> {
+    if (!KafkaProducer.instance) {
+      throw new KafkaProducerError('Producer is not initialized');
+    }
+
     try {
       const kafkaMessages: KafkaMessage[] = messages.map((message) => {
         return {
