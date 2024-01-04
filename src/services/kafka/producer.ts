@@ -4,7 +4,7 @@ import {
   Producer,
   ProducerRecord,
 } from 'kafkajs';
-import kafkaConfig from './kafka-config';
+import { kafkaProducerConfig } from './kafka-producer-config';
 import { CustomMessageFormat } from './custom-message-format';
 import { ProducerEvents } from './producer-events';
 import logger from '../../utils/logger';
@@ -15,7 +15,7 @@ export class KafkaProducer {
 
   public static getInstance() {
     if (!KafkaProducer.instance) {
-      KafkaProducer.instance = new Kafka(kafkaConfig).producer();
+      KafkaProducer.instance = new Kafka(kafkaProducerConfig).producer();
       KafkaProducer.setupEventHandlers();
     }
     return KafkaProducer.instance;

@@ -10,6 +10,7 @@ import { NotFoundError } from './errors/not-found-error';
 import { KafkaProducer } from './services/kafka/producer';
 import { fillConfigurationCache } from './utils/app-initialization';
 import logger from './utils/logger';
+import { KafkaConsumer } from './services/kafka/consumer';
 
 let server: http.Server;
 
@@ -41,6 +42,7 @@ const startServer = async () => {
 process
   .on('unhandledRejection', async (error: Error, promise) => {
     await KafkaProducer.getInstance().disconnect();
+    await KafkaConsumer.getInstance().disconnect();
     await Database.disconnect();
 
     logger.error(error, 'Unhandled Rejection at', promise);
@@ -63,7 +65,10 @@ const gracefulShutdownHandler = (signal: string) => {
     logger.info('Shutting down application');
 
     const producer = KafkaProducer.getInstance();
-    await producer.disconnect();
+    await producer.s();
+    const consumer = KafkaConsumer.getInstance();
+    await consumer.disconnect();
+
     await Database.disconnect();
 
     server.close(() => {
