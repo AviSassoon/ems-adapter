@@ -7,25 +7,23 @@ import {
 import logger from '../../utils/logger';
 import { kafkaConsumerConfig } from './kafka-consumer-config';
 import { ConsumerEvents } from './consumer-events';
+import { KafkaConsumerError } from '../../errors/kafka-consumer-error';
 
 interface ExampleMessageProcessor {
-  process(value: string): object;
+  process(value: string): Promise<object>;
 }
 export class KafkaConsumer {
   private static instance: Consumer;
-  private messageProcessor: ExampleMessageProcessor;
+  private static messageProcessor: ExampleMessageProcessor | null = null;
 
-  // public constructor(messageProcessor: ExampleMessageProcessor) {
-  //   this.messageProcessor = messageProcessor;
-  //   this.kafkaConsumer = this.createKafkaConsumer();
-  // }
+  private constructor() {}
 
-  public static getInstance() {
-    if (!KafkaConsumer.instance) {
-      KafkaConsumer.instance = KafkaConsumer.createKafkaConsumer();
-      KafkaConsumer.setupEventHandlers();
-    }
-    return KafkaConsumer.instance;
+  private static async initializeConsumer(
+    messageProcessor: ExampleMessageProcessor,
+  ) {
+    KafkaConsumer.instance = KafkaConsumer.createKafkaConsumer();
+    KafkaConsumer.setupEventHandlers();
+    KafkaConsumer.messageProcessor = messageProcessor;
   }
 
   private static setupEventHandlers() {
@@ -49,7 +47,11 @@ export class KafkaConsumer {
     );
   }
 
-  public async start(): Promise<void> {
+  public async start(messageProcessor: ExampleMessageProcessor): Promise<void> {
+    if (!KafkaConsumer.instance) {
+      await KafkaConsumer.initializeConsumer(messageProcessor);
+    }
+
     // Check CONSUMER_TOPIC_NAME
     const topic: ConsumerSubscribeTopics = {
       topics: [process.env.CONSUMER_TOPIC_NAME!],
@@ -67,7 +69,9 @@ export class KafkaConsumer {
           logger.info(`- ${prefix} ${message.key}#${message.value}`);
 
           if (message.value) {
-            this.messageProcessor.process(message.value.toString());
+            await KafkaConsumer.messageProcessor!.process(
+              message.value.toString(),
+            );
           }
         },
       });
@@ -77,7 +81,19 @@ export class KafkaConsumer {
   }
 
   public async shutdown(): Promise<void> {
-    await KafkaConsumer.instance.disconnect();
+    if (!KafkaConsumer.instance) {
+      throw new KafkaConsumerError('Consumer is not initialized');
+    }
+
+    try {
+      await KafkaConsumer.instance.disconnect();
+    } catch (error) {
+      logger.error('Error disconnecting the consumer: ', error);
+      throw new KafkaConsumerError(
+        'Error disconnecting the consumer',
+        error as Error,
+      );
+    }
   }
 
   private static createKafkaConsumer(): Consumer {
