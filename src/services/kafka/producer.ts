@@ -11,7 +11,7 @@ import logger from '../../utils/logger';
 import { KafkaProducerError } from '../../errors/kafka-producer-error';
 
 export class KafkaProducer {
-  private static instance: Producer;
+  private static instance: Producer | null = null;
 
   private constructor() {}
 
@@ -22,16 +22,16 @@ export class KafkaProducer {
   }
 
   private static setupEventHandlers() {
-    KafkaProducer.instance.on(ProducerEvents.CONNECT, () =>
+    KafkaProducer.instance!.on(ProducerEvents.CONNECT, () =>
       logger.info('Producer connected'),
     );
-    KafkaProducer.instance.on(ProducerEvents.DISCONNECT, () =>
+    KafkaProducer.instance!.on(ProducerEvents.DISCONNECT, () =>
       logger.info('Producer disconnected'),
     );
-    KafkaProducer.instance.on(ProducerEvents.REQUEST, (e) =>
+    KafkaProducer.instance!.on(ProducerEvents.REQUEST, (e) =>
       logger.info(`Producer network request: ${JSON.stringify(e)}`),
     );
-    KafkaProducer.instance.on(ProducerEvents.REQUEST_TIMEOUT, (e) =>
+    KafkaProducer.instance!.on(ProducerEvents.REQUEST_TIMEOUT, (e) =>
       logger.info(`Producer request timeout: ${JSON.stringify(e)}`),
     );
   }
@@ -42,7 +42,7 @@ export class KafkaProducer {
     }
 
     try {
-      await KafkaProducer.instance.connect();
+      await KafkaProducer.instance!.connect();
     } catch (error) {
       logger.error('Error connecting the producer: ', error);
       throw new KafkaProducerError(
