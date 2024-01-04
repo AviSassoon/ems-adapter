@@ -23,10 +23,10 @@ export class KafkaProducer {
 
   private static setupEventHandlers() {
     KafkaProducer.instance!.on(ProducerEvents.CONNECT, () =>
-      logger.info('Producer connected'),
+      logger.info('Producer connected.'),
     );
     KafkaProducer.instance!.on(ProducerEvents.DISCONNECT, () =>
-      logger.info('Producer disconnected'),
+      logger.info('Producer disconnected.'),
     );
     KafkaProducer.instance!.on(ProducerEvents.REQUEST, (e) =>
       logger.info(`Producer network request: ${JSON.stringify(e)}`),
