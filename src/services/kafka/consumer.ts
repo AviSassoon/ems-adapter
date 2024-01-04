@@ -8,19 +8,15 @@ import logger from '../../utils/logger';
 import { kafkaConsumerConfig } from './kafka-consumer-config';
 import { ConsumerEvents } from './consumer-events';
 import { KafkaConsumerError } from '../../errors/kafka-consumer-error';
+import { IMessageProcessor } from '../../models/message-processor';
 
-interface ExampleMessageProcessor {
-  process(value: string): Promise<object>;
-}
 export class KafkaConsumer {
   private static instance: Consumer;
-  private static messageProcessor: ExampleMessageProcessor | null = null;
+  private static messageProcessor: IMessageProcessor | null = null;
 
   private constructor() {}
 
-  private static async initializeConsumer(
-    messageProcessor: ExampleMessageProcessor,
-  ) {
+  private static async initializeConsumer(messageProcessor: IMessageProcessor) {
     KafkaConsumer.instance = KafkaConsumer.createKafkaConsumer();
     KafkaConsumer.setupEventHandlers();
     KafkaConsumer.messageProcessor = messageProcessor;
@@ -47,7 +43,9 @@ export class KafkaConsumer {
     );
   }
 
-  public async start(messageProcessor: ExampleMessageProcessor): Promise<void> {
+  public static async start(
+    messageProcessor: IMessageProcessor,
+  ): Promise<void> {
     if (!KafkaConsumer.instance) {
       await KafkaConsumer.initializeConsumer(messageProcessor);
     }
@@ -84,7 +82,7 @@ export class KafkaConsumer {
     }
   }
 
-  public async shutdown(): Promise<void> {
+  public static async shutdown(): Promise<void> {
     if (!KafkaConsumer.instance) {
       throw new KafkaConsumerError('Consumer is not initialized');
     }

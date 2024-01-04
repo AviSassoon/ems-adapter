@@ -6,9 +6,10 @@ import cors from 'cors';
 import { Database } from './db/mongoose';
 import { errorHandlerMiddleware } from './middlewares/error-handler-middleware';
 import healthCheck from './routers/health-check.router';
-import { NotFoundError } from './errors/not-found-error';
 import { KafkaProducer } from './services/kafka/producer';
 import { KafkaConsumer } from './services/kafka/consumer';
+import { messageProcessor } from './services/message-processor';
+import { NotFoundError } from './errors/not-found-error';
 import { fillConfigurationCache } from './utils/app-initialization';
 import logger from './utils/logger';
 
@@ -29,6 +30,7 @@ const startServer = async () => {
     const port = process.env.PORT || 3000;
     await Database.connect();
     await KafkaProducer.start();
+    await KafkaConsumer.start(messageProcessor);
     await fillConfigurationCache();
 
     server = app.listen(port, () => {
@@ -42,7 +44,7 @@ const startServer = async () => {
 process
   .on('unhandledRejection', async (error: Error, promise) => {
     await KafkaProducer.shutdown();
-    await KafkaConsumer.getInstance().disconnect();
+    await KafkaConsumer.shutdown();
     await Database.disconnect();
 
     logger.error(error, 'Unhandled Rejection at', promise);
@@ -50,6 +52,7 @@ process
   })
   .on('uncaughtException', async (error) => {
     await KafkaProducer.shutdown();
+    await KafkaConsumer.shutdown();
     await Database.disconnect();
 
     logger.error(error, 'Uncaught Exception thrown');
@@ -64,9 +67,8 @@ const gracefulShutdownHandler = (signal: string) => {
   setTimeout(async () => {
     logger.info('Shutting down application');
 
-    await KafkaProducer.start();
-    const consumer = KafkaConsumer.getInstance();
-    await consumer.disconnect();
+    await KafkaProducer.shutdown();
+    await KafkaConsumer.shutdown();
 
     await Database.disconnect();
 
